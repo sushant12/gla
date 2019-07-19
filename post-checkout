@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+# A script to change database as per branch
+
+
+# check if we have arguments and the 3rd argument is 1
+if [[ $# && $3 == 1 ]]
+  then
+    destination_branch="$(git rev-parse --abbrev-ref HEAD)"
+    source_branches="$(git show-ref --heads | grep $1 | awk '{print $2}')"
+    source_branches_array=()
+    for branch in $source_branches
+    do
+      source_branches_array+=($branch)
+    done
+    arrIn=(${source_branches_array[-1]//// })
+    echo ${arrIn[-1]}
+    echo "================"
+    echo $destination_branch
+fi
+
+
