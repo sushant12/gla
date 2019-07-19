@@ -2,21 +2,44 @@
 #
 # A script to change database as per branch
 
+# function sus() {
+#   source_branches_array=()
+#   for branch in $source_branches
+#   do
+#     source_branches_array+=($branch)
+#   done
+#   arrIn=(${source_branches_array[-1]//// })
+#   echo ${arrIn[-1]}
+# }
 
 # check if we have arguments and the 3rd argument is 1
 if [[ $# && $3 == 1 ]]
   then
     destination_branch="$(git rev-parse --abbrev-ref HEAD)"
-    source_branches="$(git show-ref --heads | grep $1 | awk '{print $2}')"
-    source_branches_array=()
-    for branch in $source_branches
+    possible_source_branches="$(git show-ref --heads | grep $1 | awk '{print $2}')"
+    project_root="$(git rev-parse --show-toplevel)"
+    source_branch=''
+
+    for branch in $possible_source_branches
     do
-      source_branches_array+=($branch)
+      source_branch="$(echo $branch | cut -f3- -d/)"
     done
-    arrIn=(${source_branches_array[-1]//// })
-    echo ${arrIn[-1]}
-    echo "================"
-    echo $destination_branch
+    # echo $source_branch
+    # echo "========="
+    # echo $destination_branch
+
+    # parse yml file
+    adapter=cat "$project_root/gla.yml" | grep adapter | awk '{print $2}'
+    encoding=cat "$project_root/gla.yml" | grep encoding | awk '{print $2}'
+    database=cat "$project_root/gla.yml" | grep database | awk '{print $2}'
+    host=cat "$project_root/gla.yml" | grep host | awk '{print $2}'
+    username=cat "$project_root/gla.yml" | grep username | awk '{print $2}'
+    password=cat "$project_root/gla.yml" | grep password | awk '{print $2}'
+
+    # pg_dump -U $username -W -d $database -p $port -h $host | gzip  > gla.gz
+    # psql postgres -c "CREATE DATABASE $database WITH ENCODING $encoding" -U $username -p $port -h $host -W
+    # gunzip -c gla.gz | psql -d $database -U $username -W -p $port -h $host
+
 fi
 
 
