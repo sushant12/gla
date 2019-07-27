@@ -2,17 +2,7 @@
 #
 # A script to change database as per branch
 
-# function sus() {
-#   source_branches_array=()
-#   for branch in $source_branches
-#   do
-#     source_branches_array+=($branch)
-#   done
-#   arrIn=(${source_branches_array[-1]//// })
-#   echo ${arrIn[-1]}
-# }
-
-# check if we have arguments and the 3rd argument is 1
+# check if we have arguments and the 3rd argument is 1(make sure it is branch checkout)
 if [[ $# && $3 == 1 ]]
   then
     destination_branch="$(git rev-parse --abbrev-ref HEAD)"
@@ -24,22 +14,46 @@ if [[ $# && $3 == 1 ]]
     do
       source_branch="$(echo $branch | cut -f3- -d/)"
     done
-    # echo $source_branch
-    # echo "========="
-    # echo $destination_branch
 
     # parse yml file
-    adapter=cat "$project_root/gla.yml" | grep adapter | awk '{print $2}'
-    encoding=cat "$project_root/gla.yml" | grep encoding | awk '{print $2}'
-    database=cat "$project_root/gla.yml" | grep database | awk '{print $2}'
-    host=cat "$project_root/gla.yml" | grep host | awk '{print $2}'
-    username=cat "$project_root/gla.yml" | grep username | awk '{print $2}'
-    password=cat "$project_root/gla.yml" | grep password | awk '{print $2}'
+    db_adapter="$(cat $project_root/gla.yml | grep 'adapter' | awk '{print $2}')"
+    db_encoding="$(cat $project_root/gla.yml | grep 'encoding' | awk '{print $2}')"
+    db_database="$(cat $project_root/gla.yml | grep 'database' | awk '{print $2}')"
+    db_host="$(cat $project_root/gla.yml | grep 'host' | awk '{print $2}')"
+    db_username="$(cat $project_root/gla.yml | grep 'username' | awk '{print $2}')"
+    db_password="$(cat $project_root/gla.yml | grep 'password' | awk '{print $2}')"
+    db_port="$(cat $project_root/gla.yml | grep 'port' | awk '{print $2}')"
+    
+    # echo "==============================="
+    # echo "Destination branch: ${destination_branch}"
+    # echo "Possible Source branch: ${possible_source_branches}"
+    # echo "Source branch: ${source_branch}"
+    # echo "==============================="
 
-    # pg_dump -U $username -W -d $database -p $port -h $host | gzip  > gla.gz
-    $(psql postgres -c "CREATE DATABASE $database WITH ENCODING $encoding" -U $username -p $port -h $host -W)
-    # gunzip -c gla.gz | psql -d $database -U $username -W -p $port -h $host
+    # check if the folder(.gla_db_dumps) exits else create one
+    [ -d $project_root/.gla_db_dumps ] || mkdir $project_root/.gla_db_dumps
 
+
+    echo "dumping db......."
+    pg_dump -U $db_username -d $db_database -p $db_port -h $db_host | gzip  > $project_root/.gla_db_dumps/$source_branch.gz
+
+    # copy the dump for other refs
+    for branch in $possible_source_branches
+    do
+      ref_source_branch="$(echo $branch | cut -f3- -d/)"
+      cp -u $project_root/.gla_db_dumps/$source_branch.gz $project_root/.gla_db_dumps/$ref_source_branch.gz
+    done
+    
+    # check if there is a dump with the branch name  
+    if [ -e $project_root/.gla_db_dumps/$destination_branch.gz ]
+    then
+      echo "deleting all tables....."
+      psql postgres://$db_username:$db_password@localhost/$db_database -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT USAGE ON SCHEMA public to PUBLIC; GRANT CREATE ON SCHEMA public to PUBLIC; COMMENT ON SCHEMA public IS 'standard public schema';"
+      echo "restorsing db........."
+      gunzip -c $project_root/.gla_db_dumps/$destination_branch.gz | psql -d $db_database -U $db_username -p $db_port -h $db_host
+    else
+        echo "fresh branch"
+    fi
 fi
 
 
