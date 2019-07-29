@@ -19,7 +19,7 @@ git clone git@github.com:sushant12/gla.git
 cd gla && cp post-checkout <project root .git/hooks folder>
 ```
 
-You need to create a `gla.yml` file where you define your database credentials. Without this file, the script will fail.
+You need to create a `gla.yml` file in your project's root directory. Without this file, the script will fail.
 
 For eg, we support the following keys in the yml file
 
