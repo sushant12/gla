@@ -5,10 +5,9 @@
 # check if we have arguments and the 3rd argument is 1(make sure it is branch checkout)
 if [[ $# && $3 == 1 ]]
   then
-    destination_branch="$(git rev-parse --abbrev-ref HEAD | cut -f3- -d/)"
+    destination_branch="$(git rev-parse --abbrev-ref HEAD | sed -r 's/[\/]+/_/g')"
     possible_source_branches="$(git show-ref --heads | grep $1 | awk '{print $2}')"
     project_root="$(git rev-parse --show-toplevel)"
-    # source_branch=''
 
     # parse yml file
     db_adapter="$(cat $project_root/gla.yml | grep 'adapter' | awk '{print $2}')"
@@ -22,25 +21,28 @@ if [[ $# && $3 == 1 ]]
     # echo "==============================="
     # echo "Destination branch: ${destination_branch}"
     # echo "Possible Source branch: ${possible_source_branches}"
-    # echo "Source branch: ${source_branch}"
     # echo "==============================="
 
     # check if the folder(.gla_db_dumps) exits else create one
     [ -d $project_root/.gla_db_dumps ] || mkdir $project_root/.gla_db_dumps
 
 
-    echo "dumping db......."
+    # echo "dumping db......."
     pg_dump -U $db_username -d $db_database -p $db_port -h $db_host | gzip  > $project_root/.gla_db_dumps/temp.gz
 
     # copy the dump for other refs
     for branch in $possible_source_branches
     do
-      # this looks for feature/branch/id
-      ref_source_branch="$(echo $branch | cut -f3- -d/)"
+      # this looks for refs/heads/<branch name>
+      # and converts feature/12 to feature_12
+      ref_source_branch="$(echo $branch | cut -f3- -d/ | sed -r 's/[\/]+/_/g')"
       cp -u $project_root/.gla_db_dumps/temp.gz $project_root/.gla_db_dumps/$ref_source_branch.gz
     done
     
-    # check if there is a dump with the branch name  
+    # check if there is a dump with the branch name
+    # echo "======================" 
+    # echo $destination_branch 
+    # echo "======================="
     if [ -e $project_root/.gla_db_dumps/$destination_branch.gz ]
     then
       echo "deleting all tables....."
